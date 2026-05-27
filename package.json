@@ -15,5 +15,22 @@
     "eslint": "^9.17.0",
     "globals": "^15.14.0",
     "web-ext": "^10.2.0"
+  },
+  "overrides": {
+    "addons-linter": {
+      "ajv": "^8.18.0",
+      "eslint": {
+        "ajv": "^6.14.0"
+      }
+    },
+    "@eslint/eslintrc": {
+      "ajv": "^6.14.0"
+    },
+    "web-ext": {
+      "tmp": ">=0.2.6"
+    },
+    "node-notifier": {
+      "uuid": "^11.1.1"
+    }
   }
 }
