@@ -16,7 +16,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -44,6 +44,14 @@ jobs:
           FILE=$(ls web-ext-artifacts/*.zip | head -n 1)
           echo "path=$FILE" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "$FILE")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload XPI as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: ${{ steps.artifact.outputs.path }}
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
