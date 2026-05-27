@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Frame</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>Frame</h1>
+  </header>
+
+  <div class="actions">
+    <button id="capture-visible" class="primary">
+      <span class="icon" aria-hidden="true">▢</span>
+      <span class="label">
+        <span class="title">Capturer la zone visible</span>
+        <span class="hint">Ce qui est affiché à l'écran</span>
+      </span>
+    </button>
+
+    <button id="capture-full" class="primary">
+      <span class="icon" aria-hidden="true">▤</span>
+      <span class="label">
+        <span class="title">Capturer la page entière</span>
+        <span class="hint">Défile et assemble toute la page</span>
+      </span>
+    </button>
+  </div>
+
+  <div id="status" class="status" hidden></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

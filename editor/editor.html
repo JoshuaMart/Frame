@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Éditeur — Frame</title>
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#lg)"/>
+          <rect x="6" y="6" width="12" height="12" rx="3" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
+          <defs>
+            <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#a78bfa"/>
+              <stop offset="1" stop-color="#7c3aed"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="brand">Frame</div>
+      <nav class="breadcrumb" aria-label="Fil d'Ariane">
+        <span class="bc-sep">/</span>
+        <span class="bc-seg muted">Capture</span>
+        <span class="bc-sep">/</span>
+        <span class="bc-seg" id="bc-title">—</span>
+      </nav>
+      <div class="status-pill">
+        <span class="dot"></span>
+        Enregistré localement
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="zoom">
+        <button id="zoom-out" title="Dézoomer" class="ghost-btn icon-btn">−</button>
+        <span id="zoom-label">100%</span>
+        <button id="zoom-in" title="Zoomer" class="ghost-btn icon-btn">+</button>
+        <button id="zoom-fit" class="ghost-btn">Ajuster</button>
+      </div>
+      <button id="export-primary" class="btn-primary">
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 2v9m0 0l-3.5-3.5M8 11l3.5-3.5M3 13.5h10" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Exporter
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel panel-left">
+      <section>
+        <header class="section-head">
+          <h2>Cadre</h2>
+          <span class="section-count">4 styles</span>
+        </header>
+        <div class="frame-grid" id="frame-options">
+          <button data-frame="none" class="frame-thumb active" title="Aucun cadre">
+            <div class="thumb-rect none"></div>
+            <span class="thumb-label">Aucun</span>
+          </button>
+          <button data-frame="chrome" class="frame-thumb" title="Chrome">
+            <div class="thumb-rect chrome">
+              <div class="thumb-dots"></div>
+            </div>
+            <span class="thumb-label">Chrome</span>
+          </button>
+          <button data-frame="safari" class="frame-thumb" title="Safari">
+            <div class="thumb-rect safari">
+              <div class="thumb-dots"></div>
+            </div>
+            <span class="thumb-label">Safari</span>
+          </button>
+          <button data-frame="firefox" class="frame-thumb" title="Firefox">
+            <div class="thumb-rect firefox">
+              <div class="thumb-dots"></div>
+            </div>
+            <span class="thumb-label">Firefox</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="frame-settings" hidden>
+        <h2 class="section-title">Personnalisation</h2>
+        <label class="field">
+          <span class="field-label">URL affichée</span>
+          <input type="text" id="frame-url" class="input" placeholder="https://example.com">
+        </label>
+        <label class="field">
+          <span class="field-label">Titre de l'onglet</span>
+          <input type="text" id="frame-title" class="input" placeholder="Onglet">
+        </label>
+        <div class="field">
+          <span class="field-label">Thème de la barre</span>
+          <div class="segmented" id="frame-theme-seg">
+            <button data-theme="light" class="active" type="button">Clair</button>
+            <button data-theme="dark" type="button">Sombre</button>
+            <button data-theme="auto" type="button">Auto</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-label">
+            Ombre portée
+            <span class="field-value" id="shadow-value">24</span>
+          </span>
+          <input type="range" id="frame-shadow" class="slider" min="0" max="60" step="1" value="24">
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">Arrière-plan</h2>
+        <div class="bg-grid" id="bg-presets">
+          <!-- populated by JS -->
+        </div>
+        <div class="field">
+          <span class="field-label">
+            Padding
+            <span class="field-value" id="padding-value">56 px</span>
+          </span>
+          <input type="range" id="frame-padding" class="slider" min="0" max="240" step="2" value="56">
+        </div>
+        <div class="field">
+          <span class="field-label">
+            Bord arrondi
+            <span class="field-value" id="radius-value">12 px</span>
+          </span>
+          <input type="range" id="frame-radius" class="slider" min="0" max="32" step="1" value="12">
+        </div>
+      </section>
+    </aside>
+
+    <section class="canvas-area">
+      <div id="canvas-host"></div>
+      <div id="canvas-placeholder" class="placeholder">Chargement de la capture…</div>
+    </section>
+
+    <aside class="panel panel-right">
+      <div class="tool-tabs">
+        <button class="tool-tab active" data-tool="select" title="Sélection (V)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 3l14 8-6.5 1.5L10 19 5 3z"/>
+          </svg>
+          <span>Sélection</span>
+        </button>
+        <button class="tool-tab" data-tool="blur" title="Masquer (B)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M3 3l18 18"/>
+          </svg>
+          <span>Masquer</span>
+        </button>
+        <button class="tool-tab disabled" disabled title="Bientôt">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4 12.5-12.5z"/>
+          </svg>
+          <span>Annoter</span>
+        </button>
+        <button class="tool-tab disabled" disabled title="Bientôt">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <text x="12" y="16" text-anchor="middle" font-size="10" fill="currentColor" stroke="none">1</text>
+          </svg>
+          <span>Numéro</span>
+        </button>
+        <button class="tool-tab disabled" disabled title="Bientôt">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 6h16M12 6v14"/>
+          </svg>
+          <span>Texte</span>
+        </button>
+      </div>
+
+      <section id="mask-section" hidden>
+        <header class="section-head">
+          <h2>Masquage</h2>
+          <span class="section-count">3 styles</span>
+        </header>
+        <div class="mask-styles" id="mask-styles">
+          <button class="mask-style" data-style="blur">
+            <div class="mask-preview blur"><span>texte</span></div>
+            <span class="mask-label">Flou</span>
+          </button>
+          <button class="mask-style active" data-style="pixelate">
+            <div class="mask-preview pixelate"></div>
+            <span class="mask-label">Mosaïque</span>
+          </button>
+          <button class="mask-style" data-style="mask">
+            <div class="mask-preview mask">···</div>
+            <span class="mask-label">Plein</span>
+          </button>
+        </div>
+        <div class="field">
+          <span class="field-label">
+            Intensité
+            <span class="field-value" id="mask-intensity-value">14 px</span>
+          </span>
+          <input type="range" id="mask-intensity" class="slider" min="2" max="60" step="1" value="14">
+        </div>
+        <div class="field" id="mask-actions-field" hidden>
+          <button id="delete-redaction" class="ghost-btn danger fullwidth">Supprimer la zone</button>
+        </div>
+        <div class="hint" id="mask-hint"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title">Export</h2>
+        <div class="format-grid" id="format-grid">
+          <button class="format-btn active" data-format="png">
+            <span class="format-name">PNG</span>
+            <span class="format-meta" id="size-png">—</span>
+          </button>
+          <button class="format-btn" data-format="jpg">
+            <span class="format-name">JPG</span>
+            <span class="format-meta" id="size-jpg">—</span>
+          </button>
+          <button class="format-btn" data-format="webp">
+            <span class="format-name">WebP</span>
+            <span class="format-meta" id="size-webp">—</span>
+          </button>
+        </div>
+        <button id="export-download" class="btn-primary fullwidth">
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 2v9m0 0l-3.5-3.5M8 11l3.5-3.5M3 13.5h10" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Télécharger
+        </button>
+        <div class="secondary-row">
+          <button id="export-clipboard" class="ghost-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+            Copier
+          </button>
+          <button id="export-share" class="ghost-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/>
+            </svg>
+            Partager
+          </button>
+        </div>
+        <div id="export-result" class="hint" hidden></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="statusbar">
+    <span class="sb-item" id="sb-dims">— × — px</span>
+    <span class="sb-sep">·</span>
+    <span class="sb-item" id="sb-layers">2 calques</span>
+    <span class="sb-sep">·</span>
+    <span class="sb-item" id="sb-frame">Aucun</span>
+    <span class="sb-spacer"></span>
+    <span class="sb-item muted" id="sb-status">Prêt</span>
+  </footer>
+
+  <script src="../lib/konva.min.js"></script>
+  <script type="module" src="editor.js"></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "Frame",
+  "version": "0.1.0",
+  "description": "Capture, encadre et édite des screenshots de pages web.",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "frame-screenshot@jomar.local",
+      "strict_min_version": "115.0"
+    }
+  },
+
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads",
+    "clipboardWrite",
+    "storage",
+    "tabs"
+  ],
+
+  "host_permissions": [
+    "<all_urls>",
+    "https://api.imgur.com/*"
+  ],
+
+  "action": {
+    "default_title": "Frame",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon.svg",
+      "32": "icons/icon.svg",
+      "48": "icons/icon.svg",
+      "128": "icons/icon.svg"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon.svg",
+    "48": "icons/icon.svg",
+    "128": "icons/icon.svg"
+  },
+
+  "background": {
+    "scripts": ["background/background.js"]
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["editor/editor.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
