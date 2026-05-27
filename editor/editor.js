@@ -51,11 +51,11 @@ const state = {
 
 function setStatus(text, isError = false) {
   const el = $('sb-status');
-  el.textContent = text || 'Prêt';
+  el.textContent = text || 'Ready';
   el.classList.toggle('error', !!isError);
   if (text) clearTimeout(setStatus._t);
   if (text && !isError) {
-    setStatus._t = setTimeout(() => { el.textContent = 'Prêt'; }, 3000);
+    setStatus._t = setTimeout(() => { el.textContent = 'Ready'; }, 3000);
   }
 }
 
@@ -65,8 +65,8 @@ function updateStatusDims() {
 }
 
 function updateStatusFrame() {
-  const labels = { none: 'Aucun', chrome: 'Chrome', safari: 'Safari', firefox: 'Firefox' };
-  const themes = { light: 'Clair', dark: 'Sombre', auto: 'Auto' };
+  const labels = { none: 'None', chrome: 'Chrome', safari: 'Safari', firefox: 'Firefox' };
+  const themes = { light: 'Light', dark: 'Dark', auto: 'Auto' };
   const f = labels[state.frameKind] || state.frameKind;
   const t = state.frameKind === 'none' ? '' : ' · ' + (themes[state.frameTheme] || state.frameTheme);
   $('sb-frame').textContent = f + t;
@@ -75,7 +75,7 @@ function updateStatusFrame() {
 function updateStatusLayers() {
   const blur = state.blurTool ? state.blurTool.nodes.length : 0;
   const total = 1 + blur + (state.frameKind === 'none' ? 0 : 1);
-  $('sb-layers').textContent = `${total} calque${total > 1 ? 's' : ''}`;
+  $('sb-layers').textContent = `${total} layer${total > 1 ? 's' : ''}`;
 }
 
 // ----- Init ------------------------------------------------------------------
@@ -100,12 +100,12 @@ function deriveSite(url) {
 
 async function init() {
   const id = getIdFromUrl();
-  if (!id) return showFatal("Aucun identifiant de capture dans l'URL.");
+  if (!id) return showFatal("No capture identifier in URL.");
 
   let record;
   try { record = await getCapture(id); }
-  catch (e) { return showFatal(`Erreur d'accès au stockage: ${e.message || e}`); }
-  if (!record) return showFatal('Capture introuvable (peut-être expirée).');
+  catch (e) { return showFatal(`Storage access error: ${e.message || e}`); }
+  if (!record) return showFatal('Capture not found (it may have expired).');
 
   const host = $('canvas-host');
   state.engine = new CanvasEngine({ host });
@@ -333,9 +333,9 @@ function activateTool(name) {
 }
 
 const STYLE_HINTS = {
-  blur: "Esthétique mais partiellement réversible. Évite-le pour des données sensibles.",
-  pixelate: "Mosaïque uniforme. Bonne robustesse pour la plupart des cas.",
-  mask: "Rectangle plein. Irréversible — recommandé pour mots de passe et tokens.",
+  blur: "Aesthetic but partially reversible. Avoid for sensitive data.",
+  pixelate: "Uniform mosaic. Good robustness for most cases.",
+  mask: "Solid rectangle. Irreversible — recommended for passwords and tokens.",
 };
 
 function updateMaskHint(style) {
@@ -422,17 +422,17 @@ function bindExports() {
 
   $('export-clipboard').addEventListener('click', () => withBusy('export-clipboard', async () => {
     await copyToClipboard(state.engine);
-    setStatus('Copié dans le presse-papiers.');
+    setStatus('Copied to clipboard.');
   }));
 
   $('export-share').addEventListener('click', () => withBusy('export-share', async () => {
-    setStatus('Upload sur Imgur…');
+    setStatus('Uploading to Imgur…');
     const url = await uploadToImgur(state.engine);
     const out = $('export-result');
     out.hidden = false;
     out.replaceChildren();
     const label = document.createElement('b');
-    label.textContent = 'URL : ';
+    label.textContent = 'URL: ';
     const link = document.createElement('a');
     // Only allow http(s) URLs from the Imgur response.
     link.href = /^https?:\/\//.test(url) ? url : '#';
@@ -440,7 +440,7 @@ function bindExports() {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     out.append(label, link);
-    try { await navigator.clipboard.writeText(url); setStatus('URL copiée.'); }
+    try { await navigator.clipboard.writeText(url); setStatus('URL copied.'); }
     catch { setStatus('Upload OK.'); }
   }));
 }
@@ -449,7 +449,7 @@ async function doDownload() {
   const fmt = FORMAT_INFO[state.exportFormat] || FORMAT_INFO.png;
   await withBusy('export-download', async () => {
     await downloadImage(state.engine, fmt.mime, fmt.ext);
-    setStatus(`${fmt.label} téléchargé.`);
+    setStatus(`${fmt.label} downloaded.`);
   });
 }
 

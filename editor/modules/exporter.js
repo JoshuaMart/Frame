@@ -33,7 +33,7 @@ export async function downloadImage(engine, mime, ext) {
 export async function copyToClipboard(engine) {
   const blob = await engine.exportToBlob('image/png');
   if (!navigator.clipboard || !window.ClipboardItem) {
-    throw new Error("Le presse-papiers n'est pas disponible dans ce contexte.");
+    throw new Error("Clipboard is not available in this context.");
   }
   await navigator.clipboard.write([
     new ClipboardItem({ [blob.type]: blob }),
@@ -58,10 +58,10 @@ export async function uploadToImgur(engine) {
       const j = await res.json();
       detail = j?.data?.error || '';
     } catch {}
-    throw new Error(`Upload Imgur échoué (${res.status}). ${detail}`);
+    throw new Error(`Imgur upload failed (${res.status}). ${detail}`);
   }
   const json = await res.json();
   const link = json?.data?.link;
-  if (!link) throw new Error('Réponse Imgur invalide.');
+  if (!link) throw new Error('Invalid Imgur response.');
   return link;
 }

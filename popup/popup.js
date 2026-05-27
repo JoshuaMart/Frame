@@ -15,10 +15,10 @@ function setBusy(busy) {
 
 async function trigger(type) {
   setBusy(true);
-  showStatus(type === 'visible' ? 'Capture en cours…' : 'Capture défilante en cours…');
+  showStatus(type === 'visible' ? 'Capturing…' : 'Scrolling capture in progress…');
   try {
     const response = await browser.runtime.sendMessage({ type: 'capture', mode: type });
-    if (!response?.ok) throw new Error(response?.error || 'Capture échouée');
+    if (!response?.ok) throw new Error(response?.error || 'Capture failed');
     window.close();
   } catch (err) {
     showStatus(err.message || String(err), true);

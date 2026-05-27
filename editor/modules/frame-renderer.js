@@ -97,7 +97,7 @@ function tab({ x, y, width, height, palette, title, withClose = true }) {
     x: 32, y: height / 2 - 7,
     width: width - (withClose ? 60 : 44),
     height: 14,
-    text: title || 'Onglet',
+    text: title || 'Tab',
     fontSize: 12,
     fontFamily: SYSTEM_FONT,
     fill: palette.tabFg,
@@ -326,7 +326,7 @@ function renderFirefox({ width, theme, url, title }) {
   tabGroup.add(new Konva.Text({
     x: 30, y: tabH / 2 - 7,
     width: tabWidth - 50, height: 14,
-    text: title || 'Onglet',
+    text: title || 'Tab',
     fontSize: 12,
     fontFamily: SYSTEM_FONT,
     fill: p.tabFg,

@@ -116,7 +116,7 @@ async function captureFull(tab) {
   });
   const plan = init[0].result;
   if (!plan || !plan.steps?.length) {
-    throw new Error('Impossible de préparer la page pour la capture.');
+    throw new Error('Unable to prepare page for capture.');
   }
 
   const { dpr, viewportWidth, totalHeight, steps } = plan;
@@ -216,9 +216,9 @@ browser.runtime.onMessage.addListener((msg) => {
 
 async function handleCapture(mode) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (!tab) throw new Error('Aucun onglet actif.');
+  if (!tab) throw new Error('No active tab.');
   if (/^(about:|moz-extension:|chrome:|resource:)/.test(tab.url || '')) {
-    throw new Error("Cette page ne peut pas être capturée (page interne du navigateur).");
+    throw new Error("This page cannot be captured (internal browser page).");
   }
   const result = mode === 'full' ? await captureFull(tab) : await captureVisible(tab);
   await openEditor(result);
