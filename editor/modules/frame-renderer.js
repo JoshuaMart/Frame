@@ -20,31 +20,6 @@ function trafficLights({ x = 16, y = 18 }) {
   return g;
 }
 
-function windowsControls({ x, y, color }) {
-  const g = new Konva.Group({ listening: false });
-  // minimize
-  g.add(new Konva.Line({
-    points: [x, y + 4, x + 12, y + 4],
-    stroke: color, strokeWidth: 1.2,
-  }));
-  // maximize (square)
-  g.add(new Konva.Rect({
-    x: x + 24, y: y - 5,
-    width: 10, height: 10,
-    stroke: color, strokeWidth: 1.2,
-  }));
-  // close
-  g.add(new Konva.Line({
-    points: [x + 48, y - 5, x + 58, y + 5],
-    stroke: color, strokeWidth: 1.2,
-  }));
-  g.add(new Konva.Line({
-    points: [x + 58, y - 5, x + 48, y + 5],
-    stroke: color, strokeWidth: 1.2,
-  }));
-  return g;
-}
-
 // Lucide-style icons. Path data is taken from lucide.dev — each icon is
 // designed in a 24x24 viewBox with a 2px stroke. We render via Konva.Path
 // and uniformly scale to the target visual size.

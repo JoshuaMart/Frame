@@ -430,7 +430,16 @@ function bindExports() {
     const url = await uploadToImgur(state.engine);
     const out = $('export-result');
     out.hidden = false;
-    out.innerHTML = `<b>URL :</b> <a href="${url}" target="_blank" rel="noopener">${url}</a>`;
+    out.replaceChildren();
+    const label = document.createElement('b');
+    label.textContent = 'URL : ';
+    const link = document.createElement('a');
+    // Only allow http(s) URLs from the Imgur response.
+    link.href = /^https?:\/\//.test(url) ? url : '#';
+    link.textContent = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    out.append(label, link);
     try { await navigator.clipboard.writeText(url); setStatus('URL copiée.'); }
     catch { setStatus('Upload OK.'); }
   }));

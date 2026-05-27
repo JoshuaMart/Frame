@@ -119,7 +119,7 @@ async function captureFull(tab) {
     throw new Error('Impossible de préparer la page pour la capture.');
   }
 
-  const { dpr, viewportWidth, viewportHeight, totalHeight, steps } = plan;
+  const { dpr, viewportWidth, totalHeight, steps } = plan;
 
   const shots = [];
   for (let i = 0; i < steps.length; i++) {
@@ -204,7 +204,7 @@ async function openEditor(captureResult) {
 
 // ---------- message handler ----------
 
-browser.runtime.onMessage.addListener((msg, sender) => {
+browser.runtime.onMessage.addListener((msg) => {
   if (!msg || typeof msg !== 'object') return;
   if (msg.type === 'capture') {
     return handleCapture(msg.mode).then(

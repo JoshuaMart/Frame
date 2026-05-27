@@ -1,0 +1,19 @@
+{
+  "name": "frame",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Firefox extension for screenshot capture, framing and redaction.",
+  "type": "module",
+  "scripts": {
+    "lint:web-ext": "web-ext lint --self-hosted",
+    "lint:eslint": "eslint .",
+    "lint": "npm run lint:eslint && npm run lint:web-ext",
+    "build": "web-ext build --overwrite-dest",
+    "run:firefox": "web-ext run"
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "web-ext": "^8.3.0"
+  }
+}

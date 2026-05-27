@@ -62,8 +62,7 @@
       }
 
       // Force a reflow before measuring.
-      // eslint-disable-next-line no-unused-expressions
-      document.documentElement.offsetHeight;
+      void document.documentElement.offsetHeight;
 
       const dpr = window.devicePixelRatio || 1;
       const viewportWidth = document.documentElement.clientWidth;
