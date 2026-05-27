@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Frame",
   "version": "0.1.0",
-  "description": "Capture, encadre et édite des screenshots de pages web.",
+  "description": "Capture web page screenshots, add a browser frame, mask sensitive areas, and export. Local-first, no data collection.",
 
   "browser_specific_settings": {
     "gecko": {
