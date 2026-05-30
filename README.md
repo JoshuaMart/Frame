@@ -26,11 +26,11 @@ Visit the [add-on listing on AMO](https://addons.mozilla.org/fr/firefox/addon/fr
 
 ## Keyboard shortcuts (in the editor)
 
-- `V` — Selection tool
-- `B` — Redact tool
-- `Esc` — Deselect / back to Selection
-- `Delete` / `Backspace` — Delete selected redaction
-- `Ctrl/Cmd + scroll` — Zoom
+- `V` - Selection tool
+- `B` - Redact tool
+- `Esc` - Deselect / back to Selection
+- `Delete` / `Backspace` - Delete selected redaction
+- `Ctrl/Cmd + scroll` - Zoom
 
 ## License
 
