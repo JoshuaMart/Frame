@@ -14,7 +14,17 @@ Visit the [add-on listing on AMO](https://addons.mozilla.org/fr/firefox/addon/fr
 
 <img width="1933" height="1030" alt="Image" src="https://github.com/user-attachments/assets/46537e7a-439b-4e6c-ab9e-49a2cee36b06" />
 
-### Keyboard shortcuts (in the editor)
+## Usage
+
+1. Click the **Frame** icon in the toolbar.
+2. Choose **Capture visible area** or **Capture full page**.
+3. The editor opens in a new tab:
+   - Pick a browser frame from the left panel (or *None* for a raw screenshot).
+   - Customize URL, tab title, theme, shadow, background, padding, corner radius.
+   - Switch to the **Redact** tool to mask sensitive areas.
+   - Export from the right panel.
+
+## Keyboard shortcuts (in the editor)
 
 - `V` — Selection tool
 - `B` — Redact tool
