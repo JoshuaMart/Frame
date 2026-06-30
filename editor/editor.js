@@ -487,4 +487,4 @@ function bindKeyboard() {
   });
 }
 
-init();
+init().catch((e) => showFatal(`Failed to load capture: ${e?.message || e}`));

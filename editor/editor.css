@@ -48,6 +48,13 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute must always win, even over author rules that set
+   `display` (e.g. .placeholder, .field). Without this, toggling `el.hidden`
+   has no effect on those elements — the "Loading capture…" overlay famously
+   stayed visible because .placeholder's `display: flex` overrode the UA
+   stylesheet's `[hidden] { display: none }`. */
+[hidden] { display: none !important; }
+
 html, body {
   height: 100%;
   margin: 0;
