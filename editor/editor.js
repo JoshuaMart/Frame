@@ -10,7 +10,7 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
-// ----- Background presets ----------------------------------------------------
+// Background presets
 
 const BG_PRESETS = [
   { id: 'slate',  kind: 'gradient', from: '#1e293b', to: '#0b0f19' },
@@ -29,7 +29,7 @@ const FORMAT_INFO = {
   webp: { mime: 'image/webp', ext: 'webp', label: 'WebP' },
 };
 
-// ----- State -----------------------------------------------------------------
+// State
 
 const state = {
   engine: null,
@@ -42,18 +42,17 @@ const state = {
   frameRadius: 12,
   frameShadow: 24,
   bgPreset: 'violet',
-  currentTool: 'select',
   selectedRedaction: null,
   exportFormat: 'png',
 };
 
-// ----- Status helpers --------------------------------------------------------
+// Status helpers
 
 function setStatus(text, isError = false) {
   const el = $('sb-status');
   el.textContent = text || 'Ready';
   el.classList.toggle('error', !!isError);
-  if (text) clearTimeout(setStatus._t);
+  clearTimeout(setStatus._t);
   if (text && !isError) {
     setStatus._t = setTimeout(() => { el.textContent = 'Ready'; }, 3000);
   }
@@ -78,7 +77,7 @@ function updateStatusLayers() {
   $('sb-layers').textContent = `${total} layer${total > 1 ? 's' : ''}`;
 }
 
-// ----- Init ------------------------------------------------------------------
+// Init
 
 function getIdFromUrl() {
   return new URLSearchParams(location.search).get('id');
@@ -117,22 +116,19 @@ async function init() {
   $('frame-url').value = state.frameUrl;
   $('frame-title').value = state.frameTitle;
 
-  // Breadcrumb
   const site = deriveSite(record.sourceUrl);
   $('bc-title').textContent = state.frameTitle
     ? (site ? `${site} · ${state.frameTitle}` : state.frameTitle)
     : 'Capture';
 
-  // Build background presets UI and apply the default
   renderBgPresets();
   state.engine.setPadding(state.framePadding);
   state.engine.setRadius(state.frameRadius);
   state.engine.setShadow(state.frameShadow);
-  setBackgroundPreset(state.bgPreset, true);
+  setBackgroundPreset(state.bgPreset);
 
   $('canvas-placeholder').hidden = true;
 
-  // UI wiring
   bindFramePicker();
   bindFrameSettings();
   bindTools();
@@ -153,7 +149,7 @@ function showFatal(msg) {
   p.style.color = 'var(--danger)';
 }
 
-// ----- Frame -----------------------------------------------------------------
+// Frame
 
 function bindFramePicker() {
   $('frame-options').addEventListener('click', (e) => {
@@ -225,7 +221,7 @@ function applyFrame() {
   state.engine.setChrome(node, height);
 }
 
-// ----- Background presets ----------------------------------------------------
+// Background presets
 
 function renderBgPresets() {
   const host = $('bg-presets');
@@ -248,17 +244,16 @@ function renderBgPresets() {
     // transparent: handled by CSS
 
     btn.appendChild(fill);
-    btn.addEventListener('click', () => setBackgroundPreset(p.id, true));
+    btn.addEventListener('click', () => setBackgroundPreset(p.id));
     host.appendChild(btn);
   }
 }
 
-function setBackgroundPreset(id, apply = true) {
+function setBackgroundPreset(id) {
   state.bgPreset = id;
   document.querySelectorAll('.bg-swatch').forEach((b) => {
     b.classList.toggle('active', b.dataset.preset === id);
   });
-  if (!apply || !state.engine) return;
   const preset = BG_PRESETS.find((p) => p.id === id) || BG_PRESETS[0];
   if (preset.kind === 'gradient') {
     state.engine.setBackground({ type: 'gradient', from: preset.from, to: preset.to });
@@ -269,7 +264,7 @@ function setBackgroundPreset(id, apply = true) {
   }
 }
 
-// ----- Tools -----------------------------------------------------------------
+// Tools
 
 function bindTools() {
   state.blurTool = new BlurTool({
@@ -292,44 +287,36 @@ function bindTools() {
     if (!btn) return;
     const style = btn.dataset.style;
     if (state.selectedRedaction) {
-      const fresh = state.blurTool.setStyle(state.selectedRedaction, style);
-      state.selectedRedaction = fresh;
-      renderMaskPanelForSelection();
+      state.blurTool.setStyle(state.selectedRedaction, style);
     } else {
       state.blurTool.setStyleForNew(style);
-      $('mask-styles').querySelectorAll('.mask-style').forEach((b) => {
-        b.classList.toggle('active', b.dataset.style === style);
-      });
-      updateMaskHint(style);
+      renderMaskPanelForSelection();
     }
   });
 
-  // Intensity slider
   $('mask-intensity').addEventListener('input', (e) => {
     const v = parseInt(e.target.value, 10);
     $('mask-intensity-value').textContent = `${v} px`;
     if (state.selectedRedaction) {
       state.blurTool.setStrength(state.selectedRedaction, v);
+    } else {
+      state.blurTool.strengths[state.blurTool.currentStyle] = v;
     }
   });
 
   $('delete-redaction').addEventListener('click', () => {
     state.blurTool.deleteSelected();
-    updateStatusLayers();
   });
 
-  // Initialize mask hint
-  updateMaskHint(state.blurTool.currentStyle);
+  renderMaskPanelForSelection();
 }
 
 function activateTool(name) {
-  state.currentTool = name;
   document.querySelectorAll('.tool-tab').forEach((b) => {
     b.classList.toggle('active', b.dataset.tool === name);
   });
   state.blurTool.setActive(name === 'blur');
   $('mask-section').hidden = (name !== 'blur');
-  if (name !== 'blur') state.blurTool.deselect();
 }
 
 const STYLE_HINTS = {
@@ -344,40 +331,21 @@ function updateMaskHint(style) {
 
 function renderMaskPanelForSelection() {
   const node = state.selectedRedaction;
-  const styles = $('mask-styles');
-  const intensityField = $('mask-intensity').parentElement;
-  const intensitySlider = $('mask-intensity');
-  const intensityLabel = $('mask-intensity-value');
-  const actionsField = $('mask-actions-field');
-
-  if (node) {
-    // Reflect selected node's style + strength
-    const style = node._frameStyle;
-    styles.querySelectorAll('.mask-style').forEach((b) => {
-      b.classList.toggle('active', b.dataset.style === style);
-    });
-    if (style === 'mask') {
-      intensityField.hidden = true;
-    } else {
-      intensityField.hidden = false;
-      intensitySlider.value = node._frameStrength;
-      intensityLabel.textContent = `${node._frameStrength} px`;
-    }
-    actionsField.hidden = false;
-    updateMaskHint(style);
-  } else {
-    // Show "next style" indicator
-    const style = state.blurTool.currentStyle;
-    styles.querySelectorAll('.mask-style').forEach((b) => {
-      b.classList.toggle('active', b.dataset.style === style);
-    });
-    intensityField.hidden = false;
-    actionsField.hidden = true;
-    updateMaskHint(style);
+  const style = node?._frameStyle || state.blurTool.currentStyle;
+  const strength = node?._frameStrength ?? state.blurTool.strengths[style];
+  $('mask-styles').querySelectorAll('.mask-style').forEach((button) => {
+    button.classList.toggle('active', button.dataset.style === style);
+  });
+  $('mask-intensity').parentElement.hidden = style === 'mask';
+  if (style !== 'mask') {
+    $('mask-intensity').value = strength;
+    $('mask-intensity-value').textContent = `${strength} px`;
   }
+  $('mask-actions-field').hidden = !node;
+  updateMaskHint(style);
 }
 
-// ----- Zoom ------------------------------------------------------------------
+// Zoom
 
 function bindZoom() {
   $('zoom-in').addEventListener('click', () => updateZoom(state.engine.getZoom() * 1.2));
@@ -404,10 +372,9 @@ function updateZoomLabel() {
   $('zoom-label').textContent = `${Math.round(state.engine.getZoom() * 100)}%`;
 }
 
-// ----- Exports ---------------------------------------------------------------
+// Exports
 
 function bindExports() {
-  // Format selector
   $('format-grid').addEventListener('click', (e) => {
     const btn = e.target.closest('.format-btn');
     if (!btn) return;
@@ -416,7 +383,6 @@ function bindExports() {
     state.exportFormat = btn.dataset.format;
   });
 
-  // Primary download (sidebar + topbar)
   $('export-download').addEventListener('click', () => doDownload());
   $('export-primary').addEventListener('click', () => doDownload());
 
@@ -447,26 +413,27 @@ function bindExports() {
 
 async function doDownload() {
   const fmt = FORMAT_INFO[state.exportFormat] || FORMAT_INFO.png;
-  await withBusy('export-download', async () => {
+  await withBusy(['export-download', 'export-primary'], async () => {
     await downloadImage(state.engine, fmt.mime, fmt.ext);
     setStatus(`${fmt.label} downloaded.`);
   });
 }
 
 async function withBusy(btnId, fn) {
-  const btn = $(btnId);
-  if (btn) btn.disabled = true;
+  const buttons = (Array.isArray(btnId) ? btnId : [btnId]).map($);
+  if (buttons.some((button) => button.disabled)) return;
+  buttons.forEach((button) => { button.disabled = true; });
   try { await fn(); }
   catch (e) { setStatus(e?.message || String(e), true); }
-  finally { if (btn) btn.disabled = false; }
+  finally { buttons.forEach((button) => { button.disabled = false; }); }
 }
 
-// ----- Keyboard --------------------------------------------------------------
+// Keyboard
 
 function bindKeyboard() {
   const isTyping = () => {
     const el = document.activeElement;
-    return el && /input|textarea|select/i.test(el.tagName);
+    return el && (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName));
   };
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -474,11 +441,10 @@ function bindKeyboard() {
       else activateTool('select');
       return;
     }
-    if (isTyping()) return;
+    if (isTyping() || e.ctrlKey || e.metaKey || e.altKey) return;
     if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedRedaction) {
       e.preventDefault();
       state.blurTool.deleteSelected();
-      updateStatusLayers();
     } else if (e.key === 'b' || e.key === 'B') {
       activateTool('blur');
     } else if (e.key === 'v' || e.key === 'V') {

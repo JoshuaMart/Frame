@@ -1,13 +1,3 @@
-// Konva-based canvas engine.
-//
-// Layout (front-to-back inside contentLayer):
-//   - shadowPlate (Konva.Rect with cornerRadius + shadow — sits behind the
-//     frame to cast a drop shadow that extends beyond its rounded edges)
-//   - frameGroup (clipped to rounded rect when a frame is active)
-//       - chromeGroup (URL bar + nav, rendered by frame-renderer)
-//       - screenshotImage
-// Separate annotationLayer holds redaction rectangles on top.
-
 const FRAME_RADIUS = 10;
 
 export class CanvasEngine {
@@ -67,7 +57,6 @@ export class CanvasEngine {
     this.bgTo = null;
 
     this.zoom = 1;
-    this.fitZoom = 1;
     this.contentWidth = 0;
     this.contentHeight = 0;
 
@@ -77,7 +66,12 @@ export class CanvasEngine {
 
   async loadScreenshotFromBlob(blob) {
     const url = URL.createObjectURL(blob);
-    const img = await loadImage(url);
+    let img;
+    try {
+      img = await loadImage(url);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
     this.screenshot = img;
     this.screenshotWidth = img.naturalWidth;
     this.screenshotHeight = img.naturalHeight;
@@ -93,7 +87,6 @@ export class CanvasEngine {
 
     this._layout();
     this.fitToHost();
-    // Keep the blob URL alive — Konva references the HTMLImageElement.
   }
 
   setChrome(chromeNode, chromeHeight) {
@@ -108,7 +101,6 @@ export class CanvasEngine {
   setPadding(px) {
     this.padding = Math.max(0, px | 0);
     this._updateClip();
-    this._refreshBackground();
     this._layout();
   }
 
@@ -124,10 +116,7 @@ export class CanvasEngine {
   }
 
   _refreshBackground() {
-    // When padding=0, the frame covers the whole content area, but Konva
-    // uses bilinear interpolation on the screenshot image so its bottom and
-    // side edges are subtly anti-aliased — letting the bg rect's color
-    // bleed through as a 1-2px halo. Hide the bg rect entirely in that case.
+    // Hide the background at zero padding to prevent color bleeding at image edges.
     const hide = this.transparentBg || this.padding <= 0;
     if (hide) {
       this.background.fill(null);
@@ -163,9 +152,7 @@ export class CanvasEngine {
   }
 
   _effectiveRadius() {
-    // No rounded corners when padding is 0 — the user expects a flush
-    // edge-to-edge frame, and rounded corners would create transparent
-    // cut-outs showing the canvas background through.
+    // Zero padding keeps the frame flush with the image edges.
     if (!this.hasFrame || this.padding <= 0) return 0;
     return this.frameRadius;
   }
@@ -221,18 +208,13 @@ export class CanvasEngine {
     this.shadowPlate.position({ x: p + inset, y: p + inset });
     this.shadowPlate.size({ width: frameW - inset * 2, height: frameH - inset * 2 });
     this.shadowPlate.cornerRadius(Math.max(0, r - inset));
-    // Map shadow strength: blur=strength, opacity scales mildly, offsetY scales.
     const s = this.shadowStrength;
     this.shadowPlate.shadowBlur(s);
     this.shadowPlate.shadowOpacity(Math.min(0.4, 0.08 + s * 0.005));
     this.shadowPlate.shadowOffsetY(Math.round(s * 0.55));
     this.shadowPlate.visible(this.hasFrame && s > 0 && this.padding > 0);
 
-    // Annotations coords are relative to the screenshot top-left.
-    this.annotationLayer.position({ x: p, y: p + this.chromeHeight });
-
-    this.contentLayer.batchDraw();
-    this.annotationLayer.batchDraw();
+    this._refreshBackground();
     this._applyZoom();
   }
 
@@ -244,8 +226,7 @@ export class CanvasEngine {
     const margin = 24;
     const fitX = (w - margin * 2) / this.contentWidth;
     const fitY = (h - margin * 2) / this.contentHeight;
-    this.fitZoom = Math.max(0.05, Math.min(fitX, fitY, 1));
-    this.zoom = this.fitZoom;
+    this.zoom = Math.max(0.05, Math.min(fitX, fitY, 1));
     this._applyZoom();
   }
 
@@ -291,50 +272,39 @@ export class CanvasEngine {
     out.height = this.contentHeight;
     const ctx = out.getContext('2d');
 
-    if (!this.transparentBg) {
-      if (this.bgType === 'gradient' && this.bgFrom && this.bgTo) {
-        const grad = ctx.createLinearGradient(0, 0, out.width, out.height);
-        grad.addColorStop(0, this.bgFrom);
-        grad.addColorStop(1, this.bgTo);
-        ctx.fillStyle = grad;
-      } else {
-        ctx.fillStyle = this.bgColor;
-      }
-      ctx.fillRect(0, 0, out.width, out.height);
-    }
-
-    const oldScale = this.contentLayer.scale();
-    const oldPos = this.contentLayer.position();
-    this.contentLayer.scale({ x: 1, y: 1 });
-    this.contentLayer.position({ x: 0, y: 0 });
-    const contentCanvas = this.contentLayer.toCanvas({
-      width: this.contentWidth,
-      height: this.contentHeight,
-      pixelRatio: 1,
-    });
-    this.contentLayer.scale(oldScale);
-    this.contentLayer.position(oldPos);
+    const contentCanvas = this._exportLayer(this.contentLayer, this.contentWidth, this.contentHeight);
     ctx.drawImage(contentCanvas, 0, 0);
 
-    const oldAScale = this.annotationLayer.scale();
-    const oldAPos = this.annotationLayer.position();
-    this.annotationLayer.scale({ x: 1, y: 1 });
-    this.annotationLayer.position({ x: 0, y: 0 });
-    const annCanvas = this.annotationLayer.toCanvas({
-      width: this.screenshotWidth,
-      height: this.screenshotHeight,
-      pixelRatio: 1,
-    });
-    this.annotationLayer.scale(oldAScale);
-    this.annotationLayer.position(oldAPos);
-    ctx.drawImage(annCanvas, this.padding, this.padding + this.chromeHeight);
+    const annotations = this._exportLayer(this.annotationLayer, this.screenshotWidth, this.screenshotHeight);
+    ctx.drawImage(annotations, this.padding, this.padding + this.chromeHeight);
 
     return out;
   }
 
+  _exportLayer(layer, width, height) {
+    const scale = layer.scale();
+    const position = layer.position();
+    const controls = layer.find('.editor-only').map((node) => ({ node, visible: node.visible() }));
+    try {
+      layer.scale({ x: 1, y: 1 });
+      layer.position({ x: 0, y: 0 });
+      for (const { node } of controls) node.visible(false);
+      return layer.toCanvas({ width, height, pixelRatio: 1 });
+    } finally {
+      layer.scale(scale);
+      layer.position(position);
+      for (const { node, visible } of controls) node.visible(visible);
+    }
+  }
+
   exportToBlob(type = 'image/png', quality = 0.92) {
     const canvas = this.exportToCanvas();
-    return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Unable to encode the image. Try a smaller capture.'));
+      }, type, quality);
+    });
   }
 }
 
@@ -342,7 +312,7 @@ function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = reject;
+    img.onerror = () => reject(new Error('Unable to load the screenshot.'));
     img.src = src;
   });
 }

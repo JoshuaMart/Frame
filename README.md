@@ -32,6 +32,17 @@ Visit the [add-on listing on AMO](https://addons.mozilla.org/fr/firefox/addon/fr
 - `Delete` / `Backspace` - Delete selected redaction
 - `Ctrl/Cmd + scroll` - Zoom
 
+## Development
+
+```sh
+npm ci
+npm test
+npm run lint
+npm run build
+```
+
+Run `npm run run:firefox` to test the extension in Firefox. Builds are written to `web-ext-artifacts/`.
+
 ## License
 
 [MIT](./LICENSE) © Joshua Martinelle

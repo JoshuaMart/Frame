@@ -1,7 +1,3 @@
-// Redaction tool: draw rectangles over the screenshot with one of three
-// styles. The blur style is esthetically pleasing but partially reversible;
-// pixelate is more robust; black mask is irreversible.
-
 const DEFAULT_BLUR = 16;
 const DEFAULT_PIXEL = 14;
 
@@ -10,9 +6,12 @@ export class BlurTool {
     this.engine = engine;
     this.onSelectionChange = onSelectionChange || (() => {});
     this.active = false;
-    this.currentStyle = 'pixelate'; // default to the safer option for new shapes
+    this.currentStyle = 'pixelate';
+    this.strengths = { blur: DEFAULT_BLUR, pixelate: DEFAULT_PIXEL };
     this.nodes = [];
     this.transformer = new Konva.Transformer({
+      name: 'editor-only',
+      flipEnabled: false,
       rotateEnabled: false,
       keepRatio: false,
       anchorSize: 8,
@@ -29,7 +28,11 @@ export class BlurTool {
   setActive(active) {
     this.active = active;
     this.engine.stage.container().style.cursor = active ? 'crosshair' : 'default';
-    if (!active) this.deselect();
+    if (!active) {
+      this._drawing?.rect.destroy();
+      this._drawing = null;
+      this.deselect();
+    }
   }
 
   setStyleForNew(style) {
@@ -48,7 +51,7 @@ export class BlurTool {
       }
       this.deselect();
 
-      const pos = this._pointerInScreenshot();
+      const pos = this.engine.pointerToScreenshot();
       if (!pos) return;
       if (pos.x < 0 || pos.y < 0) return;
       if (pos.x > this.engine.screenshotWidth || pos.y > this.engine.screenshotHeight) return;
@@ -57,6 +60,7 @@ export class BlurTool {
         startX: pos.x,
         startY: pos.y,
         rect: new Konva.Rect({
+          name: 'editor-only',
           x: pos.x,
           y: pos.y,
           width: 0,
@@ -73,7 +77,7 @@ export class BlurTool {
 
     stage.on('mousemove touchmove', () => {
       if (!this._drawing) return;
-      const pos = this._pointerInScreenshot();
+      const pos = this.engine.pointerToScreenshot();
       if (!pos) return;
       const { startX, startY, rect } = this._drawing;
       const x = Math.min(startX, pos.x);
@@ -100,6 +104,7 @@ export class BlurTool {
         x: rect.x(), y: rect.y(),
         width: w, height: h,
         style: this.currentStyle,
+        strength: this.strengths[this.currentStyle],
       });
       rect.destroy();
       this._select(node);
@@ -109,19 +114,10 @@ export class BlurTool {
       if (this.active) return;
       if (this.nodes.includes(e.target)) {
         this._select(e.target);
-      } else if (e.target === stage) {
+      } else if (e.target.getParent() !== this.transformer) {
         this.deselect();
       }
     });
-  }
-
-  _pointerInScreenshot() {
-    const pos = this.engine.stage.getPointerPosition();
-    if (!pos) return null;
-    return {
-      x: (pos.x - this.engine.annotationLayer.x()) / this.engine.zoom,
-      y: (pos.y - this.engine.annotationLayer.y()) / this.engine.zoom,
-    };
   }
 
   _createNode({ x, y, width, height, style, strength }) {
@@ -145,6 +141,7 @@ export class BlurTool {
     node._frameStrength = strength != null ? strength : (style === 'pixelate' ? DEFAULT_PIXEL : DEFAULT_BLUR);
 
     this.engine.annotationLayer.add(node);
+    this.transformer.moveToTop();
     this._refresh(node);
 
     node.on('dragmove', () => {
@@ -202,14 +199,13 @@ export class BlurTool {
 
   setStyle(node, style) {
     if (node._frameStyle === style) return node;
-    // Save geometry + strength.
+
     const x = node.x(), y = node.y();
     const width = node.width(), height = node.height();
     const strength = (style === 'pixelate' && node._frameStyle === 'blur') ? DEFAULT_PIXEL
                     : (style === 'blur' && node._frameStyle === 'pixelate') ? DEFAULT_BLUR
                     : node._frameStrength;
 
-    // Remove old node from list & destroy it.
     const idx = this.nodes.indexOf(node);
     if (idx !== -1) this.nodes.splice(idx, 1);
     node.destroy();

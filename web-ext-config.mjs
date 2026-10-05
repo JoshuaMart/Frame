@@ -11,6 +11,7 @@ export default {
     'eslint.config.js',
     'web-ext-config.mjs',
     'node_modules',
+    'tests',
     '.github',
     '.git',
     '.gitignore',

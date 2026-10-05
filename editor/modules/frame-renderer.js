@@ -1,16 +1,15 @@
-// Renders polished browser chrome (URL bar, tab strip, window controls)
-// as a Konva.Group sized to `width`. Each renderer returns { node, height }.
+// Browser chrome renderers return a Konva group and its height.
 
 const SYSTEM_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
 
-// ----- shared helpers --------------------------------------------------------
+// shared helpers
 
 function trafficLights({ x = 16, y = 18 }) {
   const g = new Konva.Group({ listening: false });
   const colors = ['#ec6a5e', '#f5bf4f', '#61c554'];
   colors.forEach((c, i) => {
     g.add(new Konva.Circle({ x: x + i * 18, y, radius: 6, fill: c }));
-    // Subtle inner highlight for depth
+
     g.add(new Konva.Circle({
       x: x + i * 18, y: y - 1.5,
       radius: 2,
@@ -20,9 +19,7 @@ function trafficLights({ x = 16, y = 18 }) {
   return g;
 }
 
-// Lucide-style icons. Path data is taken from lucide.dev — each icon is
-// designed in a 24x24 viewBox with a 2px stroke. We render via Konva.Path
-// and uniformly scale to the target visual size.
+// Icon paths from lucide.dev, scaled from a 24×24 viewBox.
 const LUCIDE = {
   back:    'M15 18l-6-6 6-6',
   forward: 'M9 18l6-6-6-6',
@@ -40,7 +37,7 @@ const ICON_DEFAULT_SIZE = 20;
 
 function icon(type, cx, cy, color, opts = {}) {
   // 3-dot menu — circles look crisper than a path at small sizes.
-  if (type === 'menu-3-dot' || type === 'menu') {
+  if (type === 'menu-3-dot') {
     const g = new Konva.Group({ opacity: opts.opacity ?? 1, listening: false });
     for (let i = -1; i <= 1; i++) {
       g.add(new Konva.Circle({
@@ -52,16 +49,12 @@ function icon(type, cx, cy, color, opts = {}) {
     return g;
   }
 
-  const lucideName = type === 'close-x' ? 'close' : type;
-  const pathData = LUCIDE[lucideName];
+  const pathData = LUCIDE[type];
   if (!pathData) return new Konva.Group({ listening: false });
 
   const size = opts.size ?? ICON_DEFAULT_SIZE;
   const k = size / 24;
-  // Lucide is designed with strokeWidth=2 at 24x24. Konva scales the stroke
-  // with the transform, so 2 * k gives the visual stroke width.
-  // We compensate slightly to keep a 1.7px visible stroke regardless of size.
-  const visibleStroke = opts.strokeWidth ?? 1.7;
+  // Keep the visible stroke at 1.7px regardless of icon size.
   return new Konva.Path({
     x: cx - size / 2,
     y: cy - size / 2,
@@ -69,7 +62,7 @@ function icon(type, cx, cy, color, opts = {}) {
     scaleY: k,
     data: pathData,
     stroke: color,
-    strokeWidth: visibleStroke / k,
+    strokeWidth: 1.7 / k,
     lineCap: 'round',
     lineJoin: 'round',
     fill: null,
@@ -78,7 +71,7 @@ function icon(type, cx, cy, color, opts = {}) {
   });
 }
 
-function tab({ x, y, width, height, palette, title, withClose = true }) {
+function tab({ x, y, width, height, palette, title }) {
   const g = new Konva.Group({ x, y });
   g.add(new Konva.Rect({
     x: 0, y: 0,
@@ -86,16 +79,16 @@ function tab({ x, y, width, height, palette, title, withClose = true }) {
     fill: palette.tabBg,
     cornerRadius: [10, 10, 0, 0],
   }));
-  // Favicon
+
   g.add(new Konva.Circle({
     x: 18, y: height / 2,
     radius: 6,
     fill: palette.faviconBg,
   }));
-  // Title
+
   g.add(new Konva.Text({
     x: 32, y: height / 2 - 7,
-    width: width - (withClose ? 60 : 44),
+    width: width - 60,
     height: 14,
     text: title || 'Tab',
     fontSize: 12,
@@ -104,13 +97,11 @@ function tab({ x, y, width, height, palette, title, withClose = true }) {
     ellipsis: true,
     wrap: 'none',
   }));
-  if (withClose) {
-    g.add(icon('close-x', width - 16, height / 2, palette.iconColor, { opacity: 0.6, size: 14 }));
-  }
+  g.add(icon('close', width - 16, height / 2, palette.iconColor, { opacity: 0.6, size: 14 }));
   return g;
 }
 
-function urlPill({ x, y, width, height, palette, url, showLock = true }) {
+function urlPill({ x, y, width, height, palette, url }) {
   const g = new Konva.Group({ x, y });
   g.add(new Konva.Rect({
     x: 0, y: 0,
@@ -120,10 +111,8 @@ function urlPill({ x, y, width, height, palette, url, showLock = true }) {
     strokeWidth: 1,
     cornerRadius: height / 2,
   }));
-  const padLeft = showLock ? 26 : 14;
-  if (showLock) {
-    g.add(icon('lock', 14, height / 2, palette.iconColor, { opacity: 0.75, size: 13 }));
-  }
+  const padLeft = 26;
+  g.add(icon('lock', 14, height / 2, palette.iconColor, { opacity: 0.75, size: 13 }));
   g.add(new Konva.Text({
     x: padLeft, y: height / 2 - 7,
     width: width - padLeft - 12,
@@ -138,7 +127,7 @@ function urlPill({ x, y, width, height, palette, url, showLock = true }) {
   return g;
 }
 
-// ----- palettes --------------------------------------------------------------
+// palettes
 
 function paletteFor(kind, theme) {
   const dark = theme === 'dark';
@@ -153,7 +142,6 @@ function paletteFor(kind, theme) {
     iconColor: '#9aa0a6',
     faviconBg: '#5f6368',
     bottomBorder: 'rgba(0,0,0,0.4)',
-    placeholderFg: 'rgba(232,234,237,0.55)',
   } : {
     tabStripBg: '#dee1e6',
     urlRowBg: '#f1f3f4',
@@ -165,7 +153,6 @@ function paletteFor(kind, theme) {
     iconColor: '#5f6368',
     faviconBg: '#dadce0',
     bottomBorder: 'rgba(0,0,0,0.08)',
-    placeholderFg: 'rgba(60,64,67,0.5)',
   };
 
   if (kind === 'safari') {
@@ -190,7 +177,7 @@ function paletteFor(kind, theme) {
   return base; // chrome
 }
 
-// ----- per-browser renderers -------------------------------------------------
+// per-browser renderers
 
 function renderChrome({ width, theme, url, title }) {
   const p = paletteFor('chrome', theme);
@@ -200,7 +187,6 @@ function renderChrome({ width, theme, url, title }) {
 
   const group = new Konva.Group();
 
-  // Tab strip
   group.add(new Konva.Rect({ x: 0, y: 0, width, height: TAB_ROW, fill: p.tabStripBg }));
   group.add(trafficLights({ x: 16, y: TAB_ROW / 2 }));
 
@@ -208,19 +194,16 @@ function renderChrome({ width, theme, url, title }) {
   const tabWidth = Math.min(280, Math.max(140, width - tabX - 60));
   group.add(tab({ x: tabX, y: 6, width: tabWidth, height: TAB_ROW - 6, palette: p, title }));
 
-  // "+" new tab
   group.add(icon('plus', tabX + tabWidth + 18, TAB_ROW / 2, p.iconColor, { opacity: 0.7, size: 16 }));
 
-  // URL bar row
   group.add(new Konva.Rect({ x: 0, y: TAB_ROW, width, height: URL_ROW, fill: p.urlRowBg }));
 
   const urlRowMid = TAB_ROW + URL_ROW / 2;
-  // Nav buttons left
+
   group.add(icon('back', 24, urlRowMid, p.iconColor, { size: 20 }));
   group.add(icon('forward', 50, urlRowMid, p.iconColor, { opacity: 0.4, size: 20 }));
   group.add(icon('refresh', 76, urlRowMid, p.iconColor, { size: 18 }));
 
-  // URL bar
   const barX = 96;
   const rightCluster = 64; // space for profile + menu
   const barWidth = Math.max(120, width - barX - rightCluster);
@@ -234,7 +217,6 @@ function renderChrome({ width, theme, url, title }) {
     url,
   }));
 
-  // Profile circle + menu
   group.add(new Konva.Circle({
     x: width - 50, y: urlRowMid,
     radius: 9,
@@ -243,7 +225,6 @@ function renderChrome({ width, theme, url, title }) {
   }));
   group.add(icon('menu-3-dot', width - 22, urlRowMid, p.iconColor));
 
-  // Bottom hairline
   group.add(new Konva.Line({
     points: [0, height - 0.5, width, height - 0.5],
     stroke: p.bottomBorder, strokeWidth: 1,
@@ -262,7 +243,7 @@ function renderSafari({ width, theme, url, title }) {
   group.add(trafficLights({ x: 16, y: HEIGHT / 2 }));
 
   const mid = HEIGHT / 2;
-  // Sidebar + nav
+
   group.add(icon('sidebar', 92, mid, p.iconColor, { size: 18 }));
   group.add(icon('back', 118, mid, p.iconColor, { size: 20 }));
   group.add(icon('forward', 144, mid, p.iconColor, { opacity: 0.4, size: 20 }));
@@ -272,7 +253,7 @@ function renderSafari({ width, theme, url, title }) {
   const sideClusterRight = 80;
   const barWidth = Math.max(140, width - sideClusterLeft - sideClusterRight);
   const barHeight = 28;
-  // Optional tab title above the URL — for compactness, just show URL.
+
   group.add(urlPill({
     x: sideClusterLeft,
     y: mid - barHeight / 2,
@@ -282,7 +263,6 @@ function renderSafari({ width, theme, url, title }) {
     url: url || title || '',
   }));
 
-  // Right cluster: share + tabs
   group.add(icon('share', width - 58, mid, p.iconColor, { size: 18 }));
   group.add(icon('tabs', width - 28, mid, p.iconColor, { size: 18 }));
 
@@ -303,7 +283,6 @@ function renderFirefox({ width, theme, url, title }) {
 
   const group = new Konva.Group();
 
-  // Tab strip
   group.add(new Konva.Rect({ x: 0, y: 0, width, height: TAB_ROW, fill: p.tabStripBg }));
   group.add(trafficLights({ x: 16, y: TAB_ROW / 2 }));
 
@@ -332,12 +311,11 @@ function renderFirefox({ width, theme, url, title }) {
     fill: p.tabFg,
     ellipsis: true, wrap: 'none',
   }));
-  tabGroup.add(icon('close-x', tabWidth - 14, tabH / 2, p.iconColor, { opacity: 0.6, size: 14 }));
+  tabGroup.add(icon('close', tabWidth - 14, tabH / 2, p.iconColor, { opacity: 0.6, size: 14 }));
   group.add(tabGroup);
 
   group.add(icon('plus', tabX + tabWidth + 18, TAB_ROW / 2, p.iconColor, { opacity: 0.7, size: 16 }));
 
-  // URL bar row
   group.add(new Konva.Rect({ x: 0, y: TAB_ROW, width, height: URL_ROW, fill: p.urlRowBg }));
 
   const urlRowMid = TAB_ROW + URL_ROW / 2;
@@ -377,10 +355,7 @@ const RENDERERS = {
   firefox: renderFirefox,
 };
 
-// All internal layout numbers (heights, font sizes, icon offsets) are calibrated
-// for a 1280px-wide chrome. For wider screenshots (HiDPI captures often produce
-// 2560+ px), we render at the reference width and uniformly scale the resulting
-// group so the chrome stays visually proportional to the page.
+// Scale from a reference width to keep browser chrome proportional on HiDPI captures.
 const REF_WIDTH = 1280;
 
 export function renderFrame({ kind, width, theme, url, title }) {
