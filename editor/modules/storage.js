@@ -26,13 +26,3 @@ export async function getCapture(id) {
     req.onerror = () => reject(req.error);
   });
 }
-
-export async function deleteCapture(id) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const t = db.transaction(STORE, 'readwrite');
-    t.objectStore(STORE).delete(id);
-    t.oncomplete = () => resolve();
-    t.onerror = () => reject(t.error);
-  });
-}

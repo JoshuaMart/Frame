@@ -1,15 +1,4 @@
-// Injected into the target tab for full-page capture.
-// Exposes window.__frameScrollCapture.{start, scrollTo, finish}.
-//
-// Strategy:
-//   - Inject a stylesheet that hides scrollbars (without using overflow:hidden,
-//     which can block window.scrollTo).
-//   - Find all position:fixed and position:sticky elements and hide them BEFORE
-//     measuring scrollHeight — otherwise sticky/fixed footers contribute to the
-//     measured height while being absent from subsequent chunks, causing the
-//     last chunk to overshoot and duplicate content.
-//   - Build a chunk plan based on the cleaned page.
-//   - In finish(), restore everything.
+// Fixed and sticky elements must be hidden before measuring the capture height.
 
 (() => {
   if (window.__frameScrollCapture) return;
@@ -17,7 +6,7 @@
   const state = {
     originalScrollX: 0,
     originalScrollY: 0,
-    fixedEls: [], // [{ el, originalDisplay }]
+    fixedEls: [],
     styleEl: null,
   };
 
@@ -30,7 +19,11 @@
       if (pos === 'fixed' || pos === 'sticky') {
         const rect = el.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
-          out.push({ el, originalDisplay: el.style.display });
+          out.push({
+            el,
+            originalDisplay: el.style.getPropertyValue('display'),
+            originalPriority: el.style.getPropertyPriority('display'),
+          });
         }
       }
     }
@@ -42,27 +35,21 @@
       state.originalScrollX = window.scrollX;
       state.originalScrollY = window.scrollY;
 
-      // Inject a non-invasive stylesheet that hides scrollbars without
-      // blocking programmatic scrolling.
       const style = document.createElement('style');
       style.id = '__frame-scroll-capture-style';
       style.textContent = `
         html { scrollbar-width: none !important; }
+        html, body { scroll-behavior: auto !important; scroll-snap-type: none !important; }
         html::-webkit-scrollbar, body::-webkit-scrollbar,
         *::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
       `;
       document.documentElement.appendChild(style);
       state.styleEl = style;
 
-      // Hide fixed + sticky elements BEFORE measuring — they pollute every
-      // chunk and (for sticky elements) inflate scrollHeight.
       state.fixedEls = findFixedAndSticky();
       for (const f of state.fixedEls) {
         f.el.style.setProperty('display', 'none', 'important');
       }
-
-      // Force a reflow before measuring.
-      void document.documentElement.offsetHeight;
 
       const dpr = window.devicePixelRatio || 1;
       const viewportWidth = document.documentElement.clientWidth;
@@ -72,9 +59,7 @@
         document.body.scrollHeight,
       );
 
-      // Plan chunks: each chunk is one viewport tall, except the last which
-      // is captured with the page scrolled to its bottom and cropped at the
-      // top to show only the remaining slice.
+      // Crop the overlap at the top of the last viewport.
       const steps = [];
       let y = 0;
       while (y < totalHeight) {
@@ -83,7 +68,6 @@
           steps.push({ y, scrollY: y, cropTop: 0 });
           y += viewportHeight;
         } else {
-          // Last chunk.
           const scrollY = Math.max(0, totalHeight - viewportHeight);
           const cropTop = viewportHeight - remaining;
           steps.push({ y, scrollY, cropTop });
@@ -95,7 +79,7 @@
     },
 
     scrollTo(scrollY) {
-      window.scrollTo(0, scrollY);
+      window.scrollTo({ left: 0, top: scrollY, behavior: 'instant' });
     },
 
     finish() {
@@ -104,9 +88,9 @@
         state.styleEl = null;
       }
       for (const f of state.fixedEls) {
-        f.el.style.display = f.originalDisplay || '';
+        f.el.style.setProperty('display', f.originalDisplay, f.originalPriority);
       }
-      window.scrollTo(state.originalScrollX, state.originalScrollY);
+      window.scrollTo({ left: state.originalScrollX, top: state.originalScrollY, behavior: 'instant' });
       delete window.__frameScrollCapture;
     },
   };

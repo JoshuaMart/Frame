@@ -1,9 +1,3 @@
-// Background event page — orchestrates capture and editor opening.
-//
-// Message contract (from popup):
-//   { type: 'capture', mode: 'visible' | 'full' }
-//   -> { ok: true } | { ok: false, error: string }
-
 const DB_NAME = 'frame-screenshot';
 const STORE = 'captures';
 const DB_VERSION = 1;
@@ -33,8 +27,6 @@ async function dbPut(id, value) {
   });
 }
 
-// ---------- capture ----------
-
 async function dataUrlToBlob(dataUrl) {
   const res = await fetch(dataUrl);
   return res.blob();
@@ -45,7 +37,7 @@ async function captureVisible(tab) {
   try {
     await injectScrollbarHider(tab.id);
     injected = true;
-    // Allow layout to settle (Firefox repaints synchronously most of the time).
+    // Allow layout to settle after hiding scrollbars.
     await new Promise((r) => setTimeout(r, 80));
     const dataUrl = await browser.tabs.captureVisibleTab(tab.windowId, {
       format: 'png',
@@ -100,92 +92,66 @@ async function blobDimensions(blob) {
   return dims;
 }
 
-// Full-page capture: runs scroll-capture script in the tab, captures each
-// viewport position, then stitches with OffscreenCanvas.
 async function captureFull(tab) {
-  // Inject the orchestration content script.
   await browser.scripting.executeScript({
     target: { tabId: tab.id },
     files: ['content/scroll-capture.js'],
   });
 
-  // After injection the script has exposed window.__frameScrollCapture.
-  const init = await browser.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: () => window.__frameScrollCapture.start(),
-  });
-  const plan = init[0].result;
-  if (!plan || !plan.steps?.length) {
-    throw new Error('Unable to prepare page for capture.');
-  }
-
-  const { dpr, viewportWidth, totalHeight, steps } = plan;
-
-  const shots = [];
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
-    await browser.scripting.executeScript({
+  try {
+    const [init] = await browser.scripting.executeScript({
       target: { tabId: tab.id },
-      func: (y) => window.__frameScrollCapture.scrollTo(y),
-      args: [step.scrollY],
+      func: () => window.__frameScrollCapture.start(),
     });
-    // Wait for layout + lazy images.
-    await new Promise((r) => setTimeout(r, 350));
-    // Rate-limit: captureVisibleTab is throttled (~MAX_WRITE_OPERATIONS_PER_MINUTE).
-    if (i > 0) await new Promise((r) => setTimeout(r, 250));
+    const plan = init?.result;
+    if (!plan?.steps?.length) {
+      throw new Error('Unable to prepare page for capture.');
+    }
 
-    const dataUrl = await browser.tabs.captureVisibleTab(tab.windowId, {
-      format: 'png',
-    });
-    shots.push({ dataUrl, y: step.y, cropTop: step.cropTop });
+    const { dpr, viewportWidth, totalHeight, steps } = plan;
+    const width = Math.round(viewportWidth * dpr);
+    const height = Math.round(totalHeight * dpr);
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (y) => window.__frameScrollCapture.scrollTo(y),
+        args: [step.scrollY],
+      });
+      // Allow layout and lazy images to settle; space out successive captures.
+      await new Promise((resolve) => setTimeout(resolve, i === 0 ? 350 : 600));
+      const dataUrl = await browser.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+      const bmp = await createImageBitmap(await dataUrlToBlob(dataUrl));
+      try {
+        const destY = Math.round(step.y * dpr);
+        const cropTop = Math.round(step.cropTop * dpr);
+        const drawHeight = Math.min(bmp.height - cropTop, height - destY);
+        ctx.drawImage(bmp, 0, cropTop, bmp.width, drawHeight, 0, destY, bmp.width, drawHeight);
+      } finally {
+        bmp.close();
+      }
+    }
+
+    return {
+      blob: await canvas.convertToBlob({ type: 'image/png' }),
+      width,
+      height,
+      sourceUrl: tab.url,
+      sourceTitle: tab.title,
+    };
+  } finally {
+    // Navigation may have removed the content script while capturing.
+    try {
+      await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => window.__frameScrollCapture?.finish(),
+      });
+    } catch {}
   }
-
-  // Restore the page.
-  await browser.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: () => window.__frameScrollCapture.finish(),
-  });
-
-  // Stitch.
-  const totalWidthPx = Math.round(viewportWidth * dpr);
-  const totalHeightPx = Math.round(totalHeight * dpr);
-  const canvas = new OffscreenCanvas(totalWidthPx, totalHeightPx);
-  const ctx = canvas.getContext('2d');
-
-  for (const shot of shots) {
-    const blob = await dataUrlToBlob(shot.dataUrl);
-    const bmp = await createImageBitmap(blob);
-    const destY = Math.round(shot.y * dpr);
-    const srcCropTop = Math.round(shot.cropTop * dpr);
-    const drawHeight = Math.min(
-      bmp.height - srcCropTop,
-      totalHeightPx - destY,
-    );
-    ctx.drawImage(
-      bmp,
-      0,
-      srcCropTop,
-      bmp.width,
-      drawHeight,
-      0,
-      destY,
-      bmp.width,
-      drawHeight,
-    );
-    bmp.close();
-  }
-
-  const stitched = await canvas.convertToBlob({ type: 'image/png' });
-  return {
-    blob: stitched,
-    width: totalWidthPx,
-    height: totalHeightPx,
-    sourceUrl: tab.url,
-    sourceTitle: tab.title,
-  };
 }
-
-// ---------- editor opening ----------
 
 async function openEditor(captureResult) {
   const id = crypto.randomUUID();
@@ -201,8 +167,6 @@ async function openEditor(captureResult) {
   await browser.tabs.create({ url });
   return id;
 }
-
-// ---------- message handler ----------
 
 browser.runtime.onMessage.addListener((msg) => {
   if (!msg || typeof msg !== 'object') return;

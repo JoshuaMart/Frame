@@ -1,10 +1,7 @@
-// Flat ESLint config — covers the WebExtension code (browser + module syntax),
-// the background event page (browser globals only), and the content script.
-
 import globals from 'globals';
 
 const baseRules = {
-  'no-unused-vars': ['warn', {
+  'no-unused-vars': ['error', {
     argsIgnorePattern: '^_',
     varsIgnorePattern: '^_',
     caughtErrors: 'none',
@@ -19,6 +16,11 @@ const baseRules = {
 
 export default [
   {
+    files: ['tests/**/*.js', '*.config.js', '*.mjs'],
+    languageOptions: { globals: globals.node },
+    rules: baseRules,
+  },
+  {
     ignores: [
       'lib/**',
       'web-ext-artifacts/**',
@@ -27,7 +29,6 @@ export default [
     ],
   },
   {
-    // Editor / popup (ES module pages)
     files: ['editor/**/*.js', 'popup/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
@@ -41,8 +42,7 @@ export default [
     rules: baseRules,
   },
   {
-    // Background event page (classic script, loaded via manifest "scripts")
-    // — top-level declarations are intentionally global here.
+    // Manifest background scripts use global declarations.
     files: ['background/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
@@ -56,7 +56,6 @@ export default [
     rules: { ...baseRules, 'no-implicit-globals': 'off' },
   },
   {
-    // Content scripts (run in page context, no extension APIs)
     files: ['content/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
